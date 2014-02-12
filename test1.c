@@ -8,11 +8,7 @@ int main(int argc, char **argv)
 {
     InitTerminalDriver();
     InitTerminal(1);
-	char *buf = malloc(10*sizeof(char));
-	ReadTerminal(1,buf,10);
-	printf("Recived %s \n", buf);
 
-    sleep(3);
-
+    sleep(300);
     exit(0);
 }
