@@ -28,6 +28,54 @@ static cond_id_t readLine[MAX_NUM_TERMINALS];
 static cond_id_t writeCharacter[MAX_NUM_TERMINALS];
 static cond_id_t writeLine[MAX_NUM_TERMINALS];
 
+int PushCharIntoEchoBuffer(int term, char c)
+{
+	if( buffers[term].echoBufferLength < ECHO_BUFFER_CAPACITY - 1 )
+	{
+		buffers[term].echoBuffer[buffers[term].echoBufferPushIndex] = c;
+		buffers[term].echoBufferLength ++;
+		buffers[term].echoBufferPushIndex ++;
+
+		if( buffers[term].echoBufferPushIndex >= ECHO_BUFFER_CAPACITY )
+		{
+			buffers[term].echoBufferPushIndex = buffers[term].echoBufferPushIndex % ECHO_BUFFER_CAPACITY;
+		}
+		
+		printf("Push Echo Buffer: [term: %d, Length: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
+
+		return 0;
+	}
+	else
+	{
+		printf("Push char to Echo Buffer: The echo buffer [term: %d, char: %c] is full.\n", term, c);
+		return -1;
+	}
+}
+
+char PopCharIntoEchoBuffer(int term)
+{
+	if( buffers[term].echoBufferLength > 0 )
+	{
+		char c = buffers[term].echoBuffer[buffers[term].echoBufferPushIndex];
+		buffers[term].echoBufferLength --;
+		buffers[term].echoBufferPopIndex ++;
+
+		if( buffers[term].echoBufferPopIndex >= ECHO_BUFFER_CAPACITY )
+		{
+			buffers[term].echoBufferPopIndex = buffers[term].echoBufferPopIndex % ECHO_BUFFER_CAPACITY;
+		}
+		
+		printf("Pop Echo Buffer: [term: %d, Length: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
+
+		return c;
+	}
+	else
+	{
+		printf("Pop char to Echo Buffer: The echo buffer [term: %d, char: %c] is empty.\n", term, c);
+		return -1;
+	}
+}
+
 void ReceiveInterrupt(int term)
 {
 	Declare_Monitor_Entry_Procedure();
@@ -51,23 +99,7 @@ void ReceiveInterrupt(int term)
 	else
 	{
 		//put the char in the echo buffer
-		if( buffers[term].echoBufferLength < ECHO_BUFFER_CAPACITY - 1 )
-		{
-			buffers[term].echoBuffer[buffers[term].echoBufferPushIndex] = c;
-			buffers[term].echoBufferPushIndex ++;
-
-			if( buffers[term].echoBufferPushIndex == ECHO_BUFFER_CAPACITY )
-			{
-				  buffers[term].echoBufferPushIndex = buffers[term].echoBufferPushIndex % ECHO_BUFFER_CAPACITY;
-			}
-
-			buffers[term].echoBufferLength ++;
-			printf("Echo Buffer: [term: %d, Length: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
-		}
-		else
-		{
-			printf("The echo buffer [term: %d, char: %c] is full.\n", term, c);
-		}
+		PushCharIntoEchoBuffer(term, c);
 
 		//put the char in the input buffer
 	}
