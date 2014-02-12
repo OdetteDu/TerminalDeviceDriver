@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 #define INPUT_BUFFER_CAPACITY 4096
-#define ECHO_BUFFER_CAPACITY 1024
+#define ECHO_BUFFER_CAPACITY 10
 
 struct Buffer
 {	  
@@ -41,7 +41,7 @@ int PushCharIntoEchoBuffer(int term, char c)
 			buffers[term].echoBufferPushIndex = buffers[term].echoBufferPushIndex % ECHO_BUFFER_CAPACITY;
 		}
 		
-		printf("Push Echo Buffer: [term: %d, Length: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
+		//printf("Push Echo Buffer: [term: %d, Length: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
 
 		return 0;
 	}
@@ -52,11 +52,14 @@ int PushCharIntoEchoBuffer(int term, char c)
 	}
 }
 
-char PopCharIntoEchoBuffer(int term)
+char PopCharFromEchoBuffer(int term)
 {
 	if( buffers[term].echoBufferLength > 0 )
 	{
-		char c = buffers[term].echoBuffer[buffers[term].echoBufferPushIndex];
+		char c = buffers[term].echoBuffer[buffers[term].echoBufferPopIndex];
+
+		//printf("Pop Char: [term: %d, char: %c].\n", term, c);
+
 		buffers[term].echoBufferLength --;
 		buffers[term].echoBufferPopIndex ++;
 
@@ -65,14 +68,14 @@ char PopCharIntoEchoBuffer(int term)
 			buffers[term].echoBufferPopIndex = buffers[term].echoBufferPopIndex % ECHO_BUFFER_CAPACITY;
 		}
 		
-		printf("Pop Echo Buffer: [term: %d, Length: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
+		//printf("Pop Echo Buffer: [term: %d, Length: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
 
 		return c;
 	}
 	else
 	{
-		printf("Pop char to Echo Buffer: The echo buffer [term: %d, char: %c] is empty.\n", term, c);
-		return -1;
+		printf("Pop char to Echo Buffer: The echo buffer [term: %d] is empty.\n", term);
+		return 0;
 	}
 }
 
@@ -102,7 +105,10 @@ void ReceiveInterrupt(int term)
 		PushCharIntoEchoBuffer(term, c);
 
 		//put the char in the input buffer
+
 	}
+
+	CondSignal(writeCharacter[term]);
 	
 }
 
@@ -111,9 +117,25 @@ void TransmitInterrupt(int term)
 	Declare_Monitor_Entry_Procedure();
 
 	//check if echo buffer is empty
-	
-	//check if output buffer is empty
+	while ( buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0 )
+	{
+		CondWait(writeCharacter[term]);
+	}
 
+	if ( buffers[term].echoBufferLength != 0)
+	{	  
+		char c = PopCharFromEchoBuffer(term);
+		WriteDataRegister(term, c);
+		printf("Write Data Register from echo: [term: %d, char: %c].\n", term, c);
+	}
+	else if ( buffers[term].outputBufferLength != 0)
+	{
+		//Output from the output buffer
+	}
+	else
+	{
+		printf("Impossible! Both echo and output buffer are empty.");
+	}
 }
 
 int WriteTerminal(int term, char *buf, int buflen)
@@ -131,6 +153,7 @@ int ReadTerminal(int term, char *buf, int buflen)
 int InitTerminal(int term)
 {
 	InitHardware(term);
+	WriteDataRegister(term, 'a');
 	buffers[term].inputBufferLength = 0;
 	buffers[term].echoBufferLength = 0;
 	buffers[term].echoBufferPushIndex = 0;
