@@ -154,6 +154,7 @@ void ReceiveInterrupt(int term)
 {
 	Declare_Monitor_Entry_Procedure();
 	char c = ReadDataRegister(term);
+	statistics.tty_in ++;
 	printf("Receive Interrupt: [term: %d, char: %c].\n", term, c);
 	//check if c is a special character, such as space, delete, or tab
 	if( c == '\r' )
@@ -214,6 +215,7 @@ void TransmitInterrupt(int term)
 	{	  
 		char c = PopCharFromEchoBuffer(term);
 		WriteDataRegister(term, c);
+		statistics.tty_out ++;
 		printf("Write Data Register from echo: [term: %d, char: %c].\n", term, c);
 	}
 	else if ( buffers[term].outputBufferLength != 0)
@@ -224,6 +226,7 @@ void TransmitInterrupt(int term)
 		if( c == '\n' && carriageOutputted[term] == 0 )
 		{
 			WriteDataRegister(term, '\r');
+			statistics.tty_out ++;
 			carriageOutputted[term] = 1;
 		}
 		else
@@ -238,6 +241,7 @@ void TransmitInterrupt(int term)
 			printf("Output Buffer: [term: %d, length: %d, buffer: %s].\n", term, buffers[term].outputBufferLength, buffers[term].outputBuffer);
 
 			WriteDataRegister(term, c);
+			statistics.tty_out ++;
 			CondSignal(writeCharacter[term]);
 			printf("Write Data Register from output: [term: %d, char: %c].\n", term, c);
 		}
@@ -266,6 +270,7 @@ int WriteTerminal(int term, char *buf, int buflen)
 		numberCharacterOutputted ++; 
 	}
 
+	statistics.user_in += buflen;
 	//buffers[term].outputBuffer = NULL;
 	//buffers[term].outputBufferLength = 0;
 	CondSignal(writeLine[term]);
@@ -296,6 +301,7 @@ int ReadTerminal(int term, char *buf, int buflen)
 		numberCharacterRead ++;
 	}
 	
+	statistics.user_out += numberCharacterRead;
 	return numberCharacterRead;
 }
 
@@ -326,6 +332,14 @@ int InitTerminal(int term)
 
 int TerminalDriverStatistics(struct termstat *stats)
 {
+	struct termstat s = *stats;
+	s.tty_in = statistics.tty_in;
+	s.tty_out = statistics.tty_out;
+	s.user_in = statistics.user_in;
+	s.user_out = statistics.user_out;
+
+	printf("[tty_in: %d, tty_out: %d, user_in: %d, user_out: %d].\n", statistics.tty_in, statistics.tty_out, statistics.user_in, statistics.user_out);
+	
 	return 0;
 }
 

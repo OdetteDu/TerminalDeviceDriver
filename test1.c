@@ -16,6 +16,10 @@ int main(int argc, char **argv)
 	char *buf = malloc(10 * sizeof(char));
 	ReadTerminal(1, buf, 10);
 
-    sleep(300);
+	struct termstat *stats = malloc(sizeof(struct termstat));
+	TerminalDriverStatistics(stats);
+	printf("[tty_in: %d, tty_out: %d, user_in: %d, user_out: %d].\n", stats->tty_in, stats->tty_out, stats->user_in, stats->user_out);
+
+    sleep(3);
     exit(0);
 }
