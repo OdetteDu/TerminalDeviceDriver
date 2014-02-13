@@ -157,6 +157,7 @@ void ReceiveInterrupt(int term)
 		PushCharIntoEchoBuffer(term, '\n');
 
 		//for input buffer, convert to be '\n'
+		PushCharIntoInputBuffer(term, '\n');
 	}
 	else if ( c == '\b' || c == '\177' )
 	{
@@ -168,7 +169,9 @@ void ReceiveInterrupt(int term)
 			PushCharIntoEchoBuffer(term, '\b');
 
 			//for input buffer, has char, remove the character
-
+			buffers[term].inputBufferLength --;
+			buffers[term].inputBufferCurrentLineLength --;
+			buffers[term].inputBufferPushIndex --;
 		}
 		else
 		{
@@ -184,7 +187,7 @@ void ReceiveInterrupt(int term)
 		PushCharIntoEchoBuffer(term, c);
 
 		//put the char in the input buffer
-
+		PushCharIntoInputBuffer(term, c);
 	}
 
 	CondSignal(writeCharacter[term]);
