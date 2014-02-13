@@ -27,9 +27,10 @@ struct Buffer
 struct Buffer buffers[MAX_NUM_TERMINALS];
 struct termstat statistics;
 
-static cond_id_t readLine[MAX_NUM_TERMINALS];
+static cond_id_t hasCharacter[MAX_NUM_TERMINALS];
 static cond_id_t writeCharacter[MAX_NUM_TERMINALS];
 static cond_id_t writeLine[MAX_NUM_TERMINALS];
+static cond_id_t readLine[MAX_NUM_TERMINALS];
 
 int PushCharIntoEchoBuffer(int term, char c)
 {
@@ -190,7 +191,7 @@ void ReceiveInterrupt(int term)
 		PushCharIntoInputBuffer(term, c);
 	}
 
-	CondSignal(writeCharacter[term]);
+	CondSignal(hasCharacter[term]);
 	
 }
 
@@ -201,7 +202,7 @@ void TransmitInterrupt(int term)
 	//check if echo buffer is empty
 	while ( buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0 )
 	{
-		CondWait(writeCharacter[term]);
+		CondWait(hasCharacter[term]);
 	}
 
 	if ( buffers[term].echoBufferLength != 0)
@@ -213,6 +214,14 @@ void TransmitInterrupt(int term)
 	else if ( buffers[term].outputBufferLength != 0)
 	{
 		//Output from the output buffer
+		char c = *(buffers[term].outputBuffer);
+		buffers[term].outputBuffer ++;
+		buffers[term].outputBufferLength --;
+		printf("Output Buffer: [term: %d, length: %d, buffer: %s].\n", term, buffers[term].outputBufferLength, buffers[term].outputBuffer);
+		CondSignal(writeCharacter[term]);
+
+		WriteDataRegister(term, c);
+		printf("Write Data Register from output: [term: %d, char: %c].\n", term, c);
 	}
 	else
 	{
@@ -223,6 +232,26 @@ void TransmitInterrupt(int term)
 int WriteTerminal(int term, char *buf, int buflen)
 {
 	Declare_Monitor_Entry_Procedure();
+	while ( buffers[term].outputBufferLength != 0 )
+	{
+		CondWait(writeLine[term]);
+	}
+
+	buffers[term].outputBuffer = buf;
+	buffers[term].outputBufferLength = buflen;
+	int numCharOutputed = 0;
+	
+	while ( numCharOutputed < buflen )
+	{
+		CondWait(writeCharacter[term]);
+		numCharOutputed ++; 
+		printf("Outputed %d characters", numCharOutputed);
+	}
+
+	//buffers[term].outputBuffer = NULL;
+	//buffers[term].outputBufferLength = 0;
+	CondSignal ( writeLine[term] );
+
 	return buflen;
 }
 
@@ -255,9 +284,10 @@ int InitTerminalDriver()
 
 	for (i = 0; i < 4; i++)//need to remove 4
 	{
+		hasCharacter[i] = CondCreate();
 		writeCharacter[i] = CondCreate();
-		readLine[i] = CondCreate();
 		writeLine[i] = CondCreate();
+		readLine[i] = CondCreate();
 	}
 
 	statistics.tty_in = 0;
