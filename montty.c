@@ -332,11 +332,10 @@ int InitTerminal(int term)
 
 int TerminalDriverStatistics(struct termstat *stats)
 {
-	struct termstat s = *stats;
-	s.tty_in = statistics.tty_in;
-	s.tty_out = statistics.tty_out;
-	s.user_in = statistics.user_in;
-	s.user_out = statistics.user_out;
+	stats -> tty_in = statistics.tty_in;
+	stats -> tty_out = statistics.tty_out;
+	stats -> user_in = statistics.user_in;
+	stats -> user_out = statistics.user_out;
 
 	printf("[tty_in: %d, tty_out: %d, user_in: %d, user_out: %d].\n", statistics.tty_in, statistics.tty_out, statistics.user_in, statistics.user_out);
 	
