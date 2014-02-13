@@ -102,6 +102,7 @@ int PushCharIntoInputBuffer(int term, char c)
 		if( c == '\n' )
 		{
 			buffers[term].inputBufferCurrentLineLength = 0;
+			CondSignal(readLine[term]);
 		}
 		
 		printf("Push Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].inputBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].inputBufferPushIndex, buffers[term].inputBufferPopIndex, buffers[term].inputBuffer);
@@ -265,7 +266,7 @@ int WriteTerminal(int term, char *buf, int buflen)
 
 	//buffers[term].outputBuffer = NULL;
 	//buffers[term].outputBufferLength = 0;
-	CondSignal ( writeLine[term] );
+	CondSignal(writeLine[term]);
 
 	return buflen;
 }
@@ -273,7 +274,27 @@ int WriteTerminal(int term, char *buf, int buflen)
 int ReadTerminal(int term, char *buf, int buflen)
 {
 	Declare_Monitor_Entry_Procedure();
-	return buffers[term].inputBufferLength;
+	while ( buffers[term].inputBufferLength == buffers[term].inputBufferCurrentLineLength )
+	{
+		CondWait(readLine[term]);
+	}
+
+	int numberCharacterRead = 0;
+	while ( numberCharacterRead < buflen )
+	{
+		char c = PopCharFromInputBuffer(term);
+		*(buf + numberCharacterRead) = c;
+		printf("Read Terminal: [term: %d, count: %d, buffer: %s].\n", term, numberCharacterRead, buf);
+		
+		if( c == '\n' )
+		{
+			break;
+		}
+
+		numberCharacterRead ++;
+	}
+	
+	return numberCharacterRead;
 }
 
 int InitTerminal(int term)

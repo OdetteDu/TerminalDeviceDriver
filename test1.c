@@ -13,6 +13,8 @@ int main(int argc, char **argv)
 	int length = 29;
 
 	WriteTerminal(1, string, length);
+	char *buf = malloc(10 * sizeof(char));
+	ReadTerminal(1, buf, 10);
 
     sleep(300);
     exit(0);
