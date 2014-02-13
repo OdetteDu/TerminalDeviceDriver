@@ -9,6 +9,8 @@
 
 struct Buffer
 {	  
+	int initialized;
+
 	char inputBuffer[INPUT_BUFFER_CAPACITY];
 	int inputBufferLength;
 	int inputBufferCurrentLineLength;
@@ -299,8 +301,21 @@ int ReadTerminal(int term, char *buf, int buflen)
 
 int InitTerminal(int term)
 {
+	if( term >= MAX_NUM_TERMINALS || term < 0 )
+	{
+		printf("Invalid terminal number: %d, should be less than %d and greater than or equal to 0", term, MAX_NUM_TERMINALS - 1);
+		return -1;
+	}
+
+	if( buffers[term].initialized > 0 )
+	{
+		printf("The terminal: %d you are trying to initialize has already been initialized", term);
+		return -1;
+	}
+
 	InitHardware(term);
 	WriteDataRegister(term, '\r');
+	buffers[term].initialized = 1;
 	buffers[term].inputBufferLength = 0;
 	buffers[term].echoBufferLength = 0;
 	buffers[term].echoBufferPushIndex = 0;
@@ -324,6 +339,8 @@ int InitTerminalDriver()
 		writeCharacter[i] = CondCreate();
 		writeLine[i] = CondCreate();
 		readLine[i] = CondCreate();
+
+		buffers[i].initialized = 0;
 	}
 
 	statistics.tty_in = 0;
