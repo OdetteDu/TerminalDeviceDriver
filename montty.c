@@ -32,6 +32,8 @@ static cond_id_t writeCharacter[MAX_NUM_TERMINALS];
 static cond_id_t writeLine[MAX_NUM_TERMINALS];
 static cond_id_t readLine[MAX_NUM_TERMINALS];
 
+int carriageOutputted[MAX_NUM_TERMINALS];
+
 int PushCharIntoEchoBuffer(int term, char c)
 {
 	if( buffers[term].echoBufferLength < ECHO_BUFFER_CAPACITY - 1 )
@@ -215,13 +217,27 @@ void TransmitInterrupt(int term)
 	{
 		//Output from the output buffer
 		char c = *(buffers[term].outputBuffer);
-		buffers[term].outputBuffer ++;
-		buffers[term].outputBufferLength --;
-		printf("Output Buffer: [term: %d, length: %d, buffer: %s].\n", term, buffers[term].outputBufferLength, buffers[term].outputBuffer);
-		CondSignal(writeCharacter[term]);
 
-		WriteDataRegister(term, c);
-		printf("Write Data Register from output: [term: %d, char: %c].\n", term, c);
+		if( c == '\n' && carriageOutputted[term] == 0 )
+		{
+			WriteDataRegister(term, '\r');
+			carriageOutputted[term] = 1;
+		}
+		else
+		{
+			if( c == '\n' )
+			{
+				  carriageOutputted[term] = 0;
+			}
+
+			buffers[term].outputBuffer ++;
+			buffers[term].outputBufferLength --;
+			printf("Output Buffer: [term: %d, length: %d, buffer: %s].\n", term, buffers[term].outputBufferLength, buffers[term].outputBuffer);
+
+			WriteDataRegister(term, c);
+			CondSignal(writeCharacter[term]);
+			printf("Write Data Register from output: [term: %d, char: %c].\n", term, c);
+		}
 	}
 	else
 	{
@@ -239,13 +255,12 @@ int WriteTerminal(int term, char *buf, int buflen)
 
 	buffers[term].outputBuffer = buf;
 	buffers[term].outputBufferLength = buflen;
-	int numCharOutputed = 0;
+	int numberCharacterOutputted = 0;
 	
-	while ( numCharOutputed < buflen )
+	while ( numberCharacterOutputted < buflen )
 	{
 		CondWait(writeCharacter[term]);
-		numCharOutputed ++; 
-		printf("Outputed %d characters", numCharOutputed);
+		numberCharacterOutputted ++; 
 	}
 
 	//buffers[term].outputBuffer = NULL;

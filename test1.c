@@ -9,8 +9,8 @@ int main(int argc, char **argv)
     InitTerminalDriver();
     InitTerminal(1);
 
-	char *string = "abcdefghijklmnopqrstuvwxyz";
-	int length = 26;
+	char *string = "abcdefg\nhijklmn\nopqrst\nuvwxyz";
+	int length = 29;
 
 	WriteTerminal(1, string, length);
 
