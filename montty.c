@@ -11,6 +11,9 @@ struct Buffer
 {	  
 	char inputBuffer[INPUT_BUFFER_CAPACITY];
 	int inputBufferLength;
+	int inputBufferCurrentLineLength;
+	int inputBufferPopIndex;
+	int inputBufferPushIndex;
 
 	char echoBuffer[ECHO_BUFFER_CAPACITY];
 	int echoBufferLength;
@@ -88,16 +91,30 @@ void ReceiveInterrupt(int term)
 	if( c == '\r' )
 	{
 		//for echo buffer, convert to be '\r' '\n'
+		PushCharIntoEchoBuffer(term, '\r');
+		PushCharIntoEchoBuffer(term, '\n');
 
 		//for input buffer, convert to be '\n'
 	}
 	else if ( c == '\b' || c == '\177' )
 	{
-		//for echo buffer, has char, convert to be '\b' ' ' '\b'
-		//empty, convert to be '\7'
+		if ( buffers[term].inputBufferCurrentLineLength > 0 )
+		{
+			//for echo buffer, has char, convert to be '\b' ' ' '\b'
+			PushCharIntoEchoBuffer(term, '\b');
+			PushCharIntoEchoBuffer(term, ' ');
+			PushCharIntoEchoBuffer(term, '\b');
 
-		//for input buffer, has char, remove the character
-		//empty, ignore
+			//for input buffer, has char, remove the character
+
+		}
+		else
+		{
+			//for echo buffer, empty, convert to be '\7'
+			PushCharIntoEchoBuffer(term, '\7');
+
+			//for input buffer, empty, ignore
+		}
 	}
 	else
 	{
@@ -153,7 +170,7 @@ int ReadTerminal(int term, char *buf, int buflen)
 int InitTerminal(int term)
 {
 	InitHardware(term);
-	WriteDataRegister(term, 'a');
+	WriteDataRegister(term, '\r');
 	buffers[term].inputBufferLength = 0;
 	buffers[term].echoBufferLength = 0;
 	buffers[term].echoBufferPushIndex = 0;
