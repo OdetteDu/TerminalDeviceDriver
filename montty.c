@@ -77,7 +77,69 @@ char PopCharFromEchoBuffer(int term)
 	}
 	else
 	{
-		printf("Pop char to Echo Buffer: The echo buffer [term: %d] is empty.\n", term);
+		printf("Pop char from Echo Buffer: The echo buffer [term: %d] is empty.\n", term);
+		return 0;
+	}
+}
+
+int PushCharIntoInputBuffer(int term, char c)
+{
+	if( buffers[term].inputBufferLength < INPUT_BUFFER_CAPACITY - 1 )
+	{
+		buffers[term].inputBuffer[buffers[term].inputBufferPushIndex] = c;
+		buffers[term].inputBufferLength ++;
+		buffers[term].inputBufferCurrentLineLength ++;
+		buffers[term].inputBufferPushIndex ++;
+
+		if( buffers[term].inputBufferPushIndex >= ECHO_BUFFER_CAPACITY )
+		{
+			buffers[term].inputBufferPushIndex = buffers[term].inputBufferPushIndex % INPUT_BUFFER_CAPACITY;
+		}
+
+		if( c == '\n' )
+		{
+			buffers[term].inputBufferCurrentLineLength = 0;
+		}
+		
+		printf("Push Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].inputBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].inputBufferPushIndex, buffers[term].inputBufferPopIndex, buffers[term].inputBuffer);
+
+		return 0;
+	}
+	else
+	{
+		printf("Push char to Input Buffer: The input buffer [term: %d, char: %c] is full.\n", term, c);
+		return -1;
+	}
+}
+
+char PopCharFromInputBuffer(int term)
+{
+	if( buffers[term].inputBufferLength > 0 )
+	{
+		if ( buffers[term].inputBufferLength == buffers[term].inputBufferCurrentLineLength )
+		{
+			printf("Trying to pop input character without hitting enter");
+		}
+
+		char c = buffers[term].inputBuffer[buffers[term].inputBufferPopIndex];
+
+		printf("Pop Char: [term: %d, char: %c].\n", term, c);
+
+		buffers[term].inputBufferLength --;
+		buffers[term].inputBufferPopIndex ++;
+
+		if( buffers[term].inputBufferPopIndex >= INPUT_BUFFER_CAPACITY )
+		{
+			buffers[term].inputBufferPopIndex = buffers[term].inputBufferPopIndex % INPUT_BUFFER_CAPACITY;
+		}
+		
+		printf("Pop Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
+
+		return c;
+	}
+	else
+	{
+		printf("Pop char from Input Buffer: The echo buffer [term: %d] is empty.\n", term);
 		return 0;
 	}
 }
