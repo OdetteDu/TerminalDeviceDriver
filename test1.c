@@ -9,6 +9,9 @@ int main(int argc, char **argv)
     InitTerminalDriver();
     InitTerminal(1);
 
+	sleep(5);
+	printf("finish sleeping\n");
+
 	char *string = "abcdefg\nhijklmn\nopqrst\nuvwxyz";
 	int length = 29;
 

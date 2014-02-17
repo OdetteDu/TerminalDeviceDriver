@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <threads.h>
 #include <terminals.h>
+#include <unistd.h>
 
 void writer(void *);
 
@@ -20,6 +21,7 @@ int main(int argc, char **argv)
 
     ThreadWaitAll();
 
+	sleep(300);
     exit(0);
 }
 

@@ -289,6 +289,7 @@ int WriteTerminal(int term, char *buf, int buflen)
 
 	while ( buffers[term].outputBufferLength != 0 )
 	{
+		printf("Wait for character to be outputted");
 		CondWait(writeLine[term]);
 	}
 
@@ -296,6 +297,7 @@ int WriteTerminal(int term, char *buf, int buflen)
 	buffers[term].outputBufferLength = buflen;
 	int numberCharacterOutputted = 0;
 	
+	CondSignal(hasCharacter[term]);
 	while ( numberCharacterOutputted < buflen )
 	{
 		CondWait(writeCharacter[term]);
