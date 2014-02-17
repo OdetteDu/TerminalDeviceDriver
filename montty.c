@@ -38,6 +38,67 @@ static cond_id_t readLine[MAX_NUM_TERMINALS];
 
 int carriageOutputted[MAX_NUM_TERMINALS];
 
+int OutputCharacter(int term)
+{
+	if( term >= MAX_NUM_TERMINALS || term < 0 )
+	{
+		printf("Invalid terminal number: %d, should be less than %d and greater than or equal to 0", term, MAX_NUM_TERMINALS - 1);
+		return -1;
+	}
+
+	if( buffers[term].initialized == 0 )
+	{
+		printf("The terminal: %d you are trying to access has not been initialized", term);
+		return -1;
+	}
+
+	//check if echo buffer is empty
+	while ( buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0 )
+	{
+		CondWait(hasCharacter[term]);
+	}
+
+	if ( buffers[term].echoBufferLength != 0)
+	{	  
+		char c = PopCharFromEchoBuffer(term);
+		WriteDataRegister(term, c);
+		statistics.tty_out ++;
+		printf("Write Data Register from echo: [term: %d, char: %c].\n", term, c);
+	}
+	else if ( buffers[term].outputBufferLength != 0)
+	{
+		//Output from the output buffer
+		char c = *(buffers[term].outputBuffer);
+
+		if( c == '\n' && carriageOutputted[term] == 0 )
+		{
+			WriteDataRegister(term, '\r');
+			statistics.tty_out ++;
+			carriageOutputted[term] = 1;
+		}
+		else
+		{
+			if( c == '\n' )
+			{
+				  carriageOutputted[term] = 0;
+			}
+
+			buffers[term].outputBuffer ++;
+			buffers[term].outputBufferLength --;
+			printf("Output Buffer: [term: %d, length: %d, buffer: %s].\n", term, buffers[term].outputBufferLength, buffers[term].outputBuffer);
+
+			WriteDataRegister(term, c);
+			statistics.tty_out ++;
+			CondSignal(writeCharacter[term]);
+			printf("Write Data Register from output: [term: %d, char: %c].\n", term, c);
+		}
+	}
+	else
+	{
+		printf("Impossible! Both echo and output buffer are empty.");
+	}
+}
+
 int PushCharIntoEchoBuffer(int term, char c)
 {
 	if( buffers[term].echoBufferLength < ECHO_BUFFER_CAPACITY - 1 )
@@ -207,56 +268,25 @@ void TransmitInterrupt(int term)
 {
 	Declare_Monitor_Entry_Procedure();
 
-	//check if echo buffer is empty
-	while ( buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0 )
-	{
-		CondWait(hasCharacter[term]);
-	}
-
-	if ( buffers[term].echoBufferLength != 0)
-	{	  
-		char c = PopCharFromEchoBuffer(term);
-		WriteDataRegister(term, c);
-		statistics.tty_out ++;
-		printf("Write Data Register from echo: [term: %d, char: %c].\n", term, c);
-	}
-	else if ( buffers[term].outputBufferLength != 0)
-	{
-		//Output from the output buffer
-		char c = *(buffers[term].outputBuffer);
-
-		if( c == '\n' && carriageOutputted[term] == 0 )
-		{
-			WriteDataRegister(term, '\r');
-			statistics.tty_out ++;
-			carriageOutputted[term] = 1;
-		}
-		else
-		{
-			if( c == '\n' )
-			{
-				  carriageOutputted[term] = 0;
-			}
-
-			buffers[term].outputBuffer ++;
-			buffers[term].outputBufferLength --;
-			printf("Output Buffer: [term: %d, length: %d, buffer: %s].\n", term, buffers[term].outputBufferLength, buffers[term].outputBuffer);
-
-			WriteDataRegister(term, c);
-			statistics.tty_out ++;
-			CondSignal(writeCharacter[term]);
-			printf("Write Data Register from output: [term: %d, char: %c].\n", term, c);
-		}
-	}
-	else
-	{
-		printf("Impossible! Both echo and output buffer are empty.");
-	}
+	OutputCharacter(term);
 }
 
 int WriteTerminal(int term, char *buf, int buflen)
 {
 	Declare_Monitor_Entry_Procedure();
+
+	if( term >= MAX_NUM_TERMINALS || term < 0 )
+	{
+		printf("Invalid terminal number: %d, should be less than %d and greater than or equal to 0", term, MAX_NUM_TERMINALS - 1);
+		return -1;
+	}
+
+	if( buffers[term].initialized == 0 )
+	{
+		printf("The terminal: %d you are trying to access has not been initialized", term);
+		return -1;
+	}
+
 	while ( buffers[term].outputBufferLength != 0 )
 	{
 		CondWait(writeLine[term]);
@@ -283,6 +313,19 @@ int WriteTerminal(int term, char *buf, int buflen)
 int ReadTerminal(int term, char *buf, int buflen)
 {
 	Declare_Monitor_Entry_Procedure();
+
+	if( term >= MAX_NUM_TERMINALS || term < 0 )
+	{
+		printf("Invalid terminal number: %d, should be less than %d and greater than or equal to 0", term, MAX_NUM_TERMINALS - 1);
+		return -1;
+	}
+
+	if( buffers[term].initialized == 0 )
+	{
+		printf("The terminal: %d you are trying to access has not been initialized", term);
+		return -1;
+	}
+
 	while ( buffers[term].inputBufferLength == buffers[term].inputBufferCurrentLineLength )
 	{
 		CondWait(readLine[term]);
@@ -338,6 +381,11 @@ int TerminalDriverStatistics(struct termstat *stats)
 {
 	Declare_Monitor_Entry_Procedure();
 
+	if (terminalDriverInitialized == 0 )
+	{
+		printf("The Terminal Driver has not been initialized. No statistics is available\n");
+	}
+
 	stats -> tty_in = statistics.tty_in;
 	stats -> tty_out = statistics.tty_out;
 	stats -> user_in = statistics.user_in;
@@ -352,9 +400,11 @@ int InitTerminalDriver()
 {
 	if (terminalDriverInitialized != 0 )
 	{
-		printf("The Terminal Driver has already been initialized");
+		printf("The Terminal Driver has already been initialized\n");
 		return -1;
 	}
+
+	terminalDriverInitialized = 1;
 
 	int i;
 
