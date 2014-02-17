@@ -304,6 +304,11 @@ void ReceiveInterrupt(int term)
 
 	CondSignal(hasCharacter[term]);
 
+	if(buffers[term].isTerminalBusy == 0)
+	{
+		OutputCharacter(term);
+	}
+
 	return 0;
 }
 
@@ -342,6 +347,12 @@ int WriteTerminal(int term, char *buf, int buflen)
 	int numberCharacterOutputted = 0;
 
 	CondSignal(hasCharacter[term]);
+
+	if(buffers[term].isTerminalBusy == 0)
+	{
+		OutputCharacter(term);
+		numberCharacterOutputted ++;
+	}
 
 	while ( numberCharacterOutputted < buflen )
 	{
@@ -426,7 +437,7 @@ int InitTerminal(int term)
 	buffers[term].echoBufferPopIndex = 0;
 	buffers[term].outputBufferLength = 0;
 
-	WriteDataRegister(term, '\r');
+	//WriteDataRegister(term, '\r');
 	return 0;
 }
 
