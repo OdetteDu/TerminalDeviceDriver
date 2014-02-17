@@ -33,7 +33,6 @@ struct Buffer buffers[MAX_NUM_TERMINALS];
 struct termstat statistics;
 
 static cond_id_t hasCharacter[MAX_NUM_TERMINALS];
-static cond_id_t isTerminalIdle[MAX_NUM_TERMINALS];
 
 static cond_id_t writeCharacter[MAX_NUM_TERMINALS];
 static cond_id_t writeLine[MAX_NUM_TERMINALS];
@@ -235,12 +234,6 @@ int WriteCharacter(int term)
 
 int OutputCharacter(int term)
 {
-	//if(buffers[term].isTerminalBusy)
-	//{
-		//printf("Trying to output character while the hardware is busy.\n");
-		//return -1;
-	//}
-
 	while(buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0)
 	{
 		printf("Wait for Characters.\n");
@@ -267,6 +260,7 @@ void ReceiveInterrupt(int term)
 	char c = ReadDataRegister(term);
 	statistics.tty_in ++;
 	//printf("Receive Interrupt: [term: %d, char: %c].\n", term, c);
+
 	//check if c is a special character, such as space, delete, or tab
 	if( c == '\r' )
 	{
@@ -321,8 +315,6 @@ void ReceiveInterrupt(int term)
 void TransmitInterrupt(int term)
 {
 	Declare_Monitor_Entry_Procedure();
-	//buffers[term].isTerminalBusy = 0;
-	
 	OutputCharacter(term);
 }
 
@@ -437,15 +429,12 @@ int InitTerminal(int term)
 	}
 
 	InitHardware(term);
-	//WriteDataRegister(term, '\r');
 	buffers[term].initialized = 1;
 	buffers[term].inputBufferLength = 0;
 	buffers[term].echoBufferLength = 0;
 	buffers[term].echoBufferPushIndex = 0;
 	buffers[term].echoBufferPopIndex = 0;
 	buffers[term].outputBufferLength = 0;
-
-	//OutputCharacter(term);
 
 	return 0;
 }
@@ -484,8 +473,6 @@ int InitTerminalDriver()
 	for (i = 0; i < 4; i++)//need to remove 4
 	{
 		hasCharacter[i] = CondCreate();
-		isTerminalIdle[i] = CondCreate();
-
 		writeCharacter[i] = CondCreate();
 		writeLine[i] = CondCreate();
 		readLine[i] = CondCreate();
