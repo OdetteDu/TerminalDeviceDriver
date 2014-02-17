@@ -8,6 +8,8 @@ int main(int argc, char **argv)
 {
     InitTerminalDriver();
     InitTerminal(1);
+	InitTerminal(2);
+
 
 	//sleep(5);
 	//printf("finish sleeping\n");
@@ -15,6 +17,7 @@ int main(int argc, char **argv)
 	char *string = "abcdefg\nhijklmn\nopqrst\nuvwxyz";
 	int length = 29;
 
+	WriteTerminal(2, string, length);
 	char *buf = malloc(10 * sizeof(char));
 	ReadTerminal(1, buf, 10);
 
