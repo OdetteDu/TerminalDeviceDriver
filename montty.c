@@ -234,9 +234,9 @@ int WriteCharacter(int term)
 
 int OutputCharacter(int term)
 {
-	while(buffers[term].isTerminalBusy)
+	if(buffers[term].isTerminalBusy)
 	{
-		CondWait(isTerminalIdle[term]);
+		return 0;
 	}
 
 	while(buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0)
@@ -315,7 +315,8 @@ void TransmitInterrupt(int term)
 {
 	Declare_Monitor_Entry_Procedure();
 	buffers[term].isTerminalBusy = 0;
-	CondSignal(isTerminalIdle[term]);
+	
+	OutputCharacter(term);
 }
 
 int WriteTerminal(int term, char *buf, int buflen)
@@ -427,10 +428,7 @@ int InitTerminal(int term)
 	buffers[term].echoBufferPopIndex = 0;
 	buffers[term].outputBufferLength = 0;
 
-	while(1)
-	{
-		OutputCharacter(term);
-	}
+	OutputCharacter(term);
 
 	return 0;
 }
