@@ -112,7 +112,7 @@ int PushCharIntoInputBuffer(int term, char c)
 			CondSignal(readLine[term]);
 		}
 		
-		printf("Push Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].inputBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].inputBufferPushIndex, buffers[term].inputBufferPopIndex, buffers[term].inputBuffer);
+		//printf("Push Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].inputBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].inputBufferPushIndex, buffers[term].inputBufferPopIndex, buffers[term].inputBuffer);
 
 		return 0;
 	}
@@ -129,7 +129,7 @@ char PopCharFromInputBuffer(int term)
 	{
 		if ( buffers[term].inputBufferLength == buffers[term].inputBufferCurrentLineLength )
 		{
-			printf("Trying to pop input character without hitting enter");
+			printf("Trying to pop input character without hitting enter.\n");
 		}
 
 		char c = buffers[term].inputBuffer[buffers[term].inputBufferPopIndex];
@@ -144,7 +144,7 @@ char PopCharFromInputBuffer(int term)
 			buffers[term].inputBufferPopIndex = buffers[term].inputBufferPopIndex % INPUT_BUFFER_CAPACITY;
 		}
 		
-		printf("Pop Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
+		//printf("Pop Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
 
 		return c;
 	}
@@ -165,7 +165,7 @@ int EchoCharacter(int term)
 
 	if( buffers[term].initialized == 0 )
 	{
-		printf("The terminal: %d you are trying to access has not been initialized", term);
+		printf("The terminal: %d you are trying to access has not been initialized.\n", term);
 		return -1;
 	}
 
@@ -175,21 +175,23 @@ int EchoCharacter(int term)
 		WriteDataRegister(term, c);
 		buffers[term].isTerminalBusy = 1;
 		statistics.tty_out ++;
-		printf("Write Data Register from echo: [term: %d, char: %c].\n", term, c);
+		//printf("Write Data Register from echo: [term: %d, char: %c].\n", term, c);
 	}
+
+	return 0;
 }
 
 int WriteCharacter(int term)
 {
 	if( term >= MAX_NUM_TERMINALS || term < 0 )
 	{
-		printf("Invalid terminal number: %d, should be less than %d and greater than or equal to 0", term, MAX_NUM_TERMINALS - 1);
+		printf("Invalid terminal number: %d, should be less than %d and greater than or equal to 0.\n", term, MAX_NUM_TERMINALS - 1);
 		return -1;
 	}
 
 	if( buffers[term].initialized == 0 )
 	{
-		printf("The terminal: %d you are trying to access has not been initialized", term);
+		printf("The terminal: %d you are trying to access has not been initialized.\n", term);
 		return -1;
 	}
 
@@ -226,6 +228,8 @@ int WriteCharacter(int term)
 	{
 		printf("Impossible! Both echo and output buffer are empty.");
 	}
+
+	return 0;
 }
 
 int OutputCharacter(int term)
@@ -235,18 +239,26 @@ int OutputCharacter(int term)
 		CondWait(isTerminalIdle[term]);
 	}
 
-	if (buffers[term].echoBufferLength != 0)
+	while(buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0)
 	{
+		printf("Echo Length: %d, Output Length: %d. \n", buffers[term].echoBufferLength, buffers[term].outputBufferLength);
+		printf("Wait for Characters.\n");
+		CondWait(hasCharacter[term]);
+	}
+
+	printf("Echo Length: %d, Output Length: %d. \n", buffers[term].echoBufferLength, buffers[term].outputBufferLength);
+	if (buffers[term].echoBufferLength != 0)
+	{ 
+		printf("Echo Character.\n");
 		EchoCharacter(term);
 	}
 	else if(buffers[term].outputBufferLength != 0)
 	{
+		printf("Write Character.\n");
 		WriteCharacter(term);
 	}
-	else
-	{
-		CondWait(hasCharacter[term]);
-	}
+
+	return 0;
 }
 
 void ReceiveInterrupt(int term)
@@ -254,7 +266,7 @@ void ReceiveInterrupt(int term)
 	Declare_Monitor_Entry_Procedure();
 	char c = ReadDataRegister(term);
 	statistics.tty_in ++;
-	printf("Receive Interrupt: [term: %d, char: %c].\n", term, c);
+	//printf("Receive Interrupt: [term: %d, char: %c].\n", term, c);
 	//check if c is a special character, such as space, delete, or tab
 	if( c == '\r' )
 	{
@@ -310,21 +322,23 @@ int WriteTerminal(int term, char *buf, int buflen)
 {
 	Declare_Monitor_Entry_Procedure();
 
+	printf("Write Terminal.\n");
+
 	if( term >= MAX_NUM_TERMINALS || term < 0 )
 	{
-		printf("Invalid terminal number: %d, should be less than %d and greater than or equal to 0", term, MAX_NUM_TERMINALS - 1);
+		printf("Invalid terminal number: %d, should be less than %d and greater than or equal to 0.\n", term, MAX_NUM_TERMINALS - 1);
 		return -1;
 	}
 
 	if( buffers[term].initialized == 0 )
 	{
-		printf("The terminal: %d you are trying to access has not been initialized", term);
+		printf("The terminal: %d you are trying to access has not been initialized.\n", term);
 		return -1;
 	}
 
 	while ( buffers[term].outputBufferLength != 0 )
 	{
-		printf("Wait for character to be outputted");
+		printf("Wait for character to be outputted.\n");
 		CondWait(writeLine[term]);
 	}
 
@@ -333,8 +347,7 @@ int WriteTerminal(int term, char *buf, int buflen)
 	int numberCharacterOutputted = 0;
 
 	CondSignal(hasCharacter[term]);
-	
-	CondSignal(hasCharacter[term]);
+
 	while ( numberCharacterOutputted < buflen )
 	{
 		CondWait(writeCharacter[term]);
@@ -355,13 +368,13 @@ int ReadTerminal(int term, char *buf, int buflen)
 
 	if( term >= MAX_NUM_TERMINALS || term < 0 )
 	{
-		printf("Invalid terminal number: %d, should be less than %d and greater than or equal to 0", term, MAX_NUM_TERMINALS - 1);
+		printf("Invalid terminal number: %d, should be less than %d and greater than or equal to 0.\n", term, MAX_NUM_TERMINALS - 1);
 		return -1;
 	}
 
 	if( buffers[term].initialized == 0 )
 	{
-		printf("The terminal: %d you are trying to access has not been initialized", term);
+		printf("The terminal: %d you are trying to access has not been initialized.\n", term);
 		return -1;
 	}
 
@@ -395,18 +408,18 @@ int InitTerminal(int term)
 	
 	if( term >= MAX_NUM_TERMINALS || term < 0 )
 	{
-		printf("Invalid terminal number: %d, should be less than %d and greater than or equal to 0", term, MAX_NUM_TERMINALS - 1);
+		printf("Invalid terminal number: %d, should be less than %d and greater than or equal to 0.\n", term, MAX_NUM_TERMINALS - 1);
 		return -1;
 	}
 
 	if( buffers[term].initialized > 0 )
 	{
-		printf("The terminal: %d you are trying to initialize has already been initialized", term);
+		printf("The terminal: %d you are trying to initialize has already been initialized.\n", term);
 		return -1;
 	}
 
 	InitHardware(term);
-	WriteDataRegister(term, '\r');
+	//WriteDataRegister(term, '\r');
 	buffers[term].initialized = 1;
 	buffers[term].inputBufferLength = 0;
 	buffers[term].echoBufferLength = 0;
@@ -414,7 +427,7 @@ int InitTerminal(int term)
 	buffers[term].echoBufferPopIndex = 0;
 	buffers[term].outputBufferLength = 0;
 
-	while(true)
+	while(1)
 	{
 		OutputCharacter(term);
 	}
@@ -473,4 +486,4 @@ int InitTerminalDriver()
 	return 0;
 }
 
-writeCharacter
+
