@@ -10,6 +10,7 @@
 struct Buffer
 {	  
 	int initialized;
+	int isTerminalBusy;
 
 	char inputBuffer[INPUT_BUFFER_CAPACITY];
 	int inputBufferLength;
@@ -32,6 +33,8 @@ struct Buffer buffers[MAX_NUM_TERMINALS];
 struct termstat statistics;
 
 static cond_id_t hasCharacter[MAX_NUM_TERMINALS];
+static cond_id_t isTerminalIdle[MAX_NUM_TERMINALS];
+
 static cond_id_t writeCharacter[MAX_NUM_TERMINALS];
 static cond_id_t writeLine[MAX_NUM_TERMINALS];
 static cond_id_t readLine[MAX_NUM_TERMINALS];
@@ -152,7 +155,7 @@ char PopCharFromInputBuffer(int term)
 	}
 }
 
-int OutputCharacter(int term)
+int EchoCharacter(int term)
 {
 	if( term >= MAX_NUM_TERMINALS || term < 0 )
 	{
@@ -166,20 +169,31 @@ int OutputCharacter(int term)
 		return -1;
 	}
 
-	//check if echo buffer is empty
-	while ( buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0 )
-	{
-		CondWait(hasCharacter[term]);
-	}
-
 	if ( buffers[term].echoBufferLength != 0)
-	{	  
+	{	
 		char c = PopCharFromEchoBuffer(term);
 		WriteDataRegister(term, c);
+		buffers[term].isTerminalBusy = 1;
 		statistics.tty_out ++;
 		printf("Write Data Register from echo: [term: %d, char: %c].\n", term, c);
 	}
-	else if ( buffers[term].outputBufferLength != 0)
+}
+
+int WriteCharacter(int term)
+{
+	if( term >= MAX_NUM_TERMINALS || term < 0 )
+	{
+		printf("Invalid terminal number: %d, should be less than %d and greater than or equal to 0", term, MAX_NUM_TERMINALS - 1);
+		return -1;
+	}
+
+	if( buffers[term].initialized == 0 )
+	{
+		printf("The terminal: %d you are trying to access has not been initialized", term);
+		return -1;
+	}
+
+	if ( buffers[term].outputBufferLength != 0)
 	{
 		//Output from the output buffer
 		char c = *(buffers[term].outputBuffer);
@@ -187,6 +201,7 @@ int OutputCharacter(int term)
 		if( c == '\n' && carriageOutputted[term] == 0 )
 		{
 			WriteDataRegister(term, '\r');
+			buffers[term].isTerminalBusy = 1;
 			statistics.tty_out ++;
 			carriageOutputted[term] = 1;
 		}
@@ -210,6 +225,27 @@ int OutputCharacter(int term)
 	else
 	{
 		printf("Impossible! Both echo and output buffer are empty.");
+	}
+}
+
+int OutputCharacter(int term)
+{
+	while(buffers[term].isTerminalBusy)
+	{
+		CondWait(isTerminalIdle[term]);
+	}
+
+	if (buffers[term].echoBufferLength != 0)
+	{
+		EchoCharacter(term);
+	}
+	else if(buffers[term].outputBufferLength != 0)
+	{
+		WriteCharacter(term);
+	}
+	else
+	{
+		CondWait(hasCharacter[term]);
 	}
 }
 
@@ -261,14 +297,13 @@ void ReceiveInterrupt(int term)
 	}
 
 	CondSignal(hasCharacter[term]);
-	
 }
 
 void TransmitInterrupt(int term)
 {
 	Declare_Monitor_Entry_Procedure();
-
-	OutputCharacter(term);
+	buffers[term].isTerminalBusy = 0;
+	CondSignal(isTerminalIdle[term]);
 }
 
 int WriteTerminal(int term, char *buf, int buflen)
@@ -296,6 +331,8 @@ int WriteTerminal(int term, char *buf, int buflen)
 	buffers[term].outputBuffer = buf;
 	buffers[term].outputBufferLength = buflen;
 	int numberCharacterOutputted = 0;
+
+	CondSignal(hasCharacter[term]);
 	
 	CondSignal(hasCharacter[term]);
 	while ( numberCharacterOutputted < buflen )
@@ -376,6 +413,12 @@ int InitTerminal(int term)
 	buffers[term].echoBufferPushIndex = 0;
 	buffers[term].echoBufferPopIndex = 0;
 	buffers[term].outputBufferLength = 0;
+
+	while(true)
+	{
+		OutputCharacter(term);
+	}
+
 	return 0;
 }
 
@@ -413,6 +456,8 @@ int InitTerminalDriver()
 	for (i = 0; i < 4; i++)//need to remove 4
 	{
 		hasCharacter[i] = CondCreate();
+		isTerminalIdle[i] = CondCreate();
+
 		writeCharacter[i] = CondCreate();
 		writeLine[i] = CondCreate();
 		readLine[i] = CondCreate();
@@ -428,4 +473,4 @@ int InitTerminalDriver()
 	return 0;
 }
 
-
+writeCharacter
