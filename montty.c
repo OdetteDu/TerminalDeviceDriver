@@ -26,6 +26,8 @@ struct Buffer
 	int outputBufferLength;
 };
 
+int terminalDriverInitialized;
+
 struct Buffer buffers[MAX_NUM_TERMINALS];
 struct termstat statistics;
 
@@ -307,6 +309,8 @@ int ReadTerminal(int term, char *buf, int buflen)
 
 int InitTerminal(int term)
 {
+	Declare_Monitor_Entry_Procedure();
+	
 	if( term >= MAX_NUM_TERMINALS || term < 0 )
 	{
 		printf("Invalid terminal number: %d, should be less than %d and greater than or equal to 0", term, MAX_NUM_TERMINALS - 1);
@@ -332,6 +336,8 @@ int InitTerminal(int term)
 
 int TerminalDriverStatistics(struct termstat *stats)
 {
+	Declare_Monitor_Entry_Procedure();
+
 	stats -> tty_in = statistics.tty_in;
 	stats -> tty_out = statistics.tty_out;
 	stats -> user_in = statistics.user_in;
@@ -344,6 +350,12 @@ int TerminalDriverStatistics(struct termstat *stats)
 
 int InitTerminalDriver()
 {
+	if (terminalDriverInitialized != 0 )
+	{
+		printf("The Terminal Driver has already been initialized");
+		return -1;
+	}
+
 	int i;
 
 	for (i = 0; i < 4; i++)//need to remove 4
