@@ -240,6 +240,13 @@ int OutputCharacter(int term)
 		return -1;
 	}
 
+	while(buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0)
+	{
+		printf("Echo Length: %d, Output Length: %d. \n", buffers[term].echoBufferLength, buffers[term].outputBufferLength);
+		printf("Wait for Characters.\n");
+		CondWait(hasCharacter[term]);
+	}
+
 	printf("Echo Length: %d, Output Length: %d. \n", buffers[term].echoBufferLength, buffers[term].outputBufferLength);
 	if (buffers[term].echoBufferLength != 0)
 	{ 
@@ -310,13 +317,6 @@ void TransmitInterrupt(int term)
 	Declare_Monitor_Entry_Procedure();
 	buffers[term].isTerminalBusy = 0;
 	
-	while(buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0)
-	{
-		printf("Echo Length: %d, Output Length: %d. \n", buffers[term].echoBufferLength, buffers[term].outputBufferLength);
-		printf("Wait for Characters.\n");
-		CondWait(hasCharacter[term]);
-	}
-
 	OutputCharacter(term);
 }
 
