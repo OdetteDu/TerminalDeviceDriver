@@ -219,6 +219,7 @@ int WriteCharacter(int term)
 			printf("Output Buffer: [term: %d, length: %d, buffer: %s].\n", term, buffers[term].outputBufferLength, buffers[term].outputBuffer);
 
 			WriteDataRegister(term, c);
+			buffers[term].isTerminalBusy = 1;
 			statistics.tty_out ++;
 			CondSignal(writeCharacter[term]);
 			printf("Write Data Register from output: [term: %d, char: %c].\n", term, c);
@@ -234,20 +235,18 @@ int WriteCharacter(int term)
 
 int OutputCharacter(int term)
 {
-	if(buffers[term].isTerminalBusy)
-	{
-		printf("Trying to output character while the hardware is busy.\n");
-		return -1;
-	}
+	//if(buffers[term].isTerminalBusy)
+	//{
+		//printf("Trying to output character while the hardware is busy.\n");
+		//return -1;
+	//}
 
 	while(buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0)
 	{
-		printf("Echo Length: %d, Output Length: %d. \n", buffers[term].echoBufferLength, buffers[term].outputBufferLength);
 		printf("Wait for Characters.\n");
 		CondWait(hasCharacter[term]);
 	}
 
-	printf("Echo Length: %d, Output Length: %d. \n", buffers[term].echoBufferLength, buffers[term].outputBufferLength);
 	if (buffers[term].echoBufferLength != 0)
 	{ 
 		printf("Echo Character.\n");
@@ -310,12 +309,19 @@ void ReceiveInterrupt(int term)
 	}
 
 	CondSignal(hasCharacter[term]);
+
+	if( buffers[term].isTerminalBusy == 0 )
+	{
+		  OutputCharacter(term);
+	}
+
+	return 0;
 }
 
 void TransmitInterrupt(int term)
 {
 	Declare_Monitor_Entry_Procedure();
-	buffers[term].isTerminalBusy = 0;
+	//buffers[term].isTerminalBusy = 0;
 	
 	OutputCharacter(term);
 }
@@ -350,6 +356,11 @@ int WriteTerminal(int term, char *buf, int buflen)
 
 	CondSignal(hasCharacter[term]);
 
+	if(buffers[term].isTerminalBusy == 0)
+	{
+		  OutputCharacter(term);
+	}
+
 	while ( numberCharacterOutputted < buflen )
 	{
 		CondWait(writeCharacter[term]);
@@ -360,6 +371,11 @@ int WriteTerminal(int term, char *buf, int buflen)
 	//buffers[term].outputBuffer = NULL;
 	//buffers[term].outputBufferLength = 0;
 	CondSignal(writeLine[term]);
+	
+	if(!buffers[term].isTerminalBusy)
+	{
+		  OutputCharacter(term);
+	}
 
 	return buflen;
 }
@@ -429,7 +445,7 @@ int InitTerminal(int term)
 	buffers[term].echoBufferPopIndex = 0;
 	buffers[term].outputBufferLength = 0;
 
-	OutputCharacter(term);
+	//OutputCharacter(term);
 
 	return 0;
 }
