@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define INPUT_BUFFER_CAPACITY 4096
-#define ECHO_BUFFER_CAPACITY 10
+#define INPUT_BUFFER_CAPACITY 4
+#define ECHO_BUFFER_CAPACITY 4444 
 
 struct Buffer
 {	  
@@ -18,6 +18,7 @@ struct Buffer
 	int inputBufferPopIndex;
 	int inputBufferPushIndex;
 
+	int echoBufferStatus;
 	char echoBuffer[ECHO_BUFFER_CAPACITY];
 	int echoBufferLength;
 	int echoBufferPopIndex;
@@ -168,13 +169,34 @@ int EchoCharacter(int term)
 		return -1;
 	}
 
+	//echo Buffer Status
+	//-2 \r
+	//-1 \n
+	//1 \b
+	//2 space
+	//3 \b
+	if ( buffers[term].echoBufferStatus != 0 )
+	{
+		  int status = buffers[term].echoBufferStatus;
+		  switch (status)
+		  {
+			    case -2:
+					WriteDataRegister(term, '\r');
+					buffers[term].isTerminalBusy = 1;
+					statistics.tty_out ++;
+					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\r');
+					break;
+
+		  }
+	}
+
 	if ( buffers[term].echoBufferLength != 0)
 	{	
 		char c = PopCharFromEchoBuffer(term);
 		WriteDataRegister(term, c);
 		buffers[term].isTerminalBusy = 1;
 		statistics.tty_out ++;
-		//printf("Write Data Register from echo: [term: %d, char: %c].\n", term, c);
+		printf("Write Data Register from echo: [term: %d, char: %c].\n", term, c);
 	}
 
 	return 0;
@@ -215,7 +237,7 @@ int WriteCharacter(int term)
 
 			buffers[term].outputBuffer ++;
 			buffers[term].outputBufferLength --;
-			printf("Output Buffer: [term: %d, length: %d, buffer: %s].\n", term, buffers[term].outputBufferLength, buffers[term].outputBuffer);
+			//printf("Output Buffer: [term: %d, length: %d, buffer: %s].\n", term, buffers[term].outputBufferLength, buffers[term].outputBuffer);
 
 			WriteDataRegister(term, c);
 			buffers[term].isTerminalBusy = 1;
@@ -236,18 +258,18 @@ int OutputCharacter(int term)
 {
 	while(buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0)
 	{
-		printf("Wait for Characters.\n");
+		//printf("Wait for Characters.\n");
 		CondWait(hasCharacter[term]);
 	}
 
 	if (buffers[term].echoBufferLength != 0)
 	{ 
-		printf("Echo Character.\n");
+		//printf("Echo Character.\n");
 		EchoCharacter(term);
 	}
 	else if(buffers[term].outputBufferLength != 0)
 	{
-		printf("Write Character.\n");
+		//printf("Write Character.\n");
 		WriteCharacter(term);
 	}
 
@@ -260,6 +282,7 @@ void ReceiveInterrupt(int term)
 	char c = ReadDataRegister(term);
 	statistics.tty_in ++;
 	//printf("Receive Interrupt: [term: %d, char: %c].\n", term, c);
+	int inputBufferStatus;
 
 	//check if c is a special character, such as space, delete, or tab
 	if( c == '\r' )
@@ -269,7 +292,7 @@ void ReceiveInterrupt(int term)
 		PushCharIntoEchoBuffer(term, '\n');
 
 		//for input buffer, convert to be '\n'
-		PushCharIntoInputBuffer(term, '\n');
+		inputBufferStatus = PushCharIntoInputBuffer(term, '\n');
 	}
 	else if ( c == '\b' || c == '\177' )
 	{
@@ -299,7 +322,12 @@ void ReceiveInterrupt(int term)
 		PushCharIntoEchoBuffer(term, c);
 
 		//put the char in the input buffer
-		PushCharIntoInputBuffer(term, c);
+		inputBufferStatus = PushCharIntoInputBuffer(term, c);
+	}
+
+	if( inputBufferStatus < 0 )
+	{
+		PushCharIntoEchoBuffer(term, '\7');
 	}
 
 	CondSignal(hasCharacter[term]);
@@ -308,8 +336,6 @@ void ReceiveInterrupt(int term)
 	{
 		OutputCharacter(term);
 	}
-
-	return 0;
 }
 
 void TransmitInterrupt(int term)
