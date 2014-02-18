@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 #define INPUT_BUFFER_CAPACITY 4
-#define ECHO_BUFFER_CAPACITY 1024 
+#define ECHO_BUFFER_CAPACITY 1 
 
 struct Buffer
 {	  
@@ -217,8 +217,7 @@ int EchoCharacter(int term)
 					break;
 		  }
 	}
-
-	if ( buffers[term].echoBufferLength != 0)
+	else if ( buffers[term].echoBufferLength != 0)
 	{	
 		char c = PopCharFromEchoBuffer(term);
 		WriteDataRegister(term, c);
@@ -317,7 +316,6 @@ void ReceiveInterrupt(int term)
 		//for echo buffer, convert to be '\r' '\n'
 		//PushCharIntoEchoBuffer(term, '\r');
 		//PushCharIntoEchoBuffer(term, '\n');
-		//buffers[term].echoBufferStatus = -2;
 
 		//for input buffer, convert to be '\n'
 		if( buffers[term].inputBufferLength >= INPUT_BUFFER_CAPACITY )
@@ -327,6 +325,7 @@ void ReceiveInterrupt(int term)
 		else
 		{
 			PushCharIntoInputBuffer(term, '\n');
+			buffers[term].echoBufferStatus = -2;
 		}
 	}
 	else if ( c == '\b' || c == '\177' )
@@ -337,12 +336,12 @@ void ReceiveInterrupt(int term)
 			//PushCharIntoEchoBuffer(term, '\b');
 			//PushCharIntoEchoBuffer(term, ' ');
 			//PushCharIntoEchoBuffer(term, '\b');
-			//buffers[term].echoBufferStatus = 3;
 
 			//for input buffer, has char, remove the character
 			buffers[term].inputBufferLength --;
 			buffers[term].inputBufferCurrentLineLength --;
 			buffers[term].inputBufferPushIndex --;
+			buffers[term].echoBufferStatus = 3;
 		}
 		else
 		{
