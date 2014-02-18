@@ -17,12 +17,17 @@ main(int argc, char **argv)
 {
     InitTerminalDriver();
     InitTerminal(1);
+	InitTerminal(2);
+	InitTerminal(5);
 
     if (argc > 1) HardwareOutputSpeed(1, atoi(argv[1]));
     if (argc > 2) HardwareInputSpeed(1, atoi(argv[2]));
 
     ThreadCreate(writer1, NULL);
     ThreadCreate(writer2, NULL);
+	ThreadCreate(writer1, NULL);
+	ThreadCreate(writer1, NULL);
+	ThreadCreate(writer2, NULL);
 
     ThreadWaitAll();
 
@@ -38,6 +43,8 @@ writer1(void *arg)
     if (status != length1)
 	fprintf(stderr, "Error: writer1 status = %d, length1 = %d\n",
 	    status, length1);
+	char *buf = malloc(10 * sizeof(char));
+	ReadTerminal(1, buf, 10);
 }
 
 void
@@ -45,7 +52,9 @@ writer2(void *arg)
 {
     int status;
 
-    status = WriteTerminal(1, string2, length2);
+	char *buf = malloc(10 * sizeof(char));
+	ReadTerminal(2, buf, 10);
+    status = WriteTerminal(2, string2, length2);
     if (status != length2)
 	fprintf(stderr, "Error: writer2 status = %d, length2 = %d\n",
 	    status, length2);
