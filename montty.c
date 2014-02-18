@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 #define INPUT_BUFFER_CAPACITY 4
-#define ECHO_BUFFER_CAPACITY 4444 
+#define ECHO_BUFFER_CAPACITY 1024 
 
 struct Buffer
 {	  
@@ -43,7 +43,7 @@ int carriageOutputted[MAX_NUM_TERMINALS];
 
 int PushCharIntoEchoBuffer(int term, char c)
 {
-	if( buffers[term].echoBufferLength < ECHO_BUFFER_CAPACITY - 1 )
+	if( buffers[term].echoBufferLength < ECHO_BUFFER_CAPACITY )
 	{
 		buffers[term].echoBuffer[buffers[term].echoBufferPushIndex] = c;
 		buffers[term].echoBufferLength ++;
@@ -94,7 +94,7 @@ char PopCharFromEchoBuffer(int term)
 
 int PushCharIntoInputBuffer(int term, char c)
 {
-	if( buffers[term].inputBufferLength < INPUT_BUFFER_CAPACITY - 1 )
+	if( buffers[term].inputBufferLength < INPUT_BUFFER_CAPACITY )
 	{
 		buffers[term].inputBuffer[buffers[term].inputBufferPushIndex] = c;
 		buffers[term].inputBufferLength ++;
@@ -187,36 +187,34 @@ int EchoCharacter(int term)
 					buffers[term].echoBufferStatus ++; 
 					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\r');
 					break;
-			case -1:
+				case -1:
 					WriteDataRegister(term, '\n');
 					buffers[term].isTerminalBusy = 1;
 					statistics.tty_out ++;
 					buffers[term].echoBufferStatus ++; 
 					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\n');
 					break;
-			case 1:
+				case 1:
 					WriteDataRegister(term, '\b');
 					buffers[term].isTerminalBusy = 1;
 					statistics.tty_out ++;
 					buffers[term].echoBufferStatus --; 
 					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\b');
 					break;
-			case 2:
+				case 2:
 					WriteDataRegister(term, ' ');
 					buffers[term].isTerminalBusy = 1;
 					statistics.tty_out ++;
 					buffers[term].echoBufferStatus --; 
 					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, ' ');
 					break;
-			case 3:
+				case 3:
 					WriteDataRegister(term, '\b');
 					buffers[term].isTerminalBusy = 1;
 					statistics.tty_out ++;
 					buffers[term].echoBufferStatus --; 
 					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\b');
 					break;
-				
-
 		  }
 	}
 
@@ -294,12 +292,12 @@ int OutputCharacter(int term)
 
 	if (buffers[term].echoBufferStatus != 0 || buffers[term].echoBufferLength != 0)
 	{ 
-		//printf("Echo Character.\n");
+		printf("Echo Character.\n");
 		EchoCharacter(term);
 	}
 	else if(buffers[term].outputBufferLength != 0)
 	{
-		//printf("Write Character.\n");
+		printf("Write Character.\n");
 		WriteCharacter(term);
 	}
 
@@ -359,15 +357,16 @@ void ReceiveInterrupt(int term)
 
 	if( inputBufferStatus < 0 )
 	{
-		PushCharIntoEchoBuffer(term, '\7');
+		printf("input buffer stats < 0.\n");
+		PushCharIntoEchoBuffer(term, '7');
 	}
 
 	CondSignal(hasCharacter[term]);
 
-	if(buffers[term].isTerminalBusy == 0)
-	{
-		OutputCharacter(term);
-	}
+	//if(buffers[term].isTerminalBusy == 0)
+	//{
+	//		OutputCharacter(term);
+	//}
 }
 
 void TransmitInterrupt(int term)
@@ -380,7 +379,7 @@ int WriteTerminal(int term, char *buf, int buflen)
 {
 	Declare_Monitor_Entry_Procedure();
 
-	printf("Write Terminal.\n");
+	//printf("Write Terminal.\n");
 
 	if( term >= MAX_NUM_TERMINALS || term < 0 )
 	{
@@ -406,11 +405,11 @@ int WriteTerminal(int term, char *buf, int buflen)
 
 	CondSignal(hasCharacter[term]);
 
-	if(buffers[term].isTerminalBusy == 0)
-	{
-		OutputCharacter(term);
-		numberCharacterOutputted ++;
-	}
+	//if(buffers[term].isTerminalBusy == 0)
+	//{
+	//	OutputCharacter(term);
+	//	numberCharacterOutputted ++;
+	//}
 
 	while ( numberCharacterOutputted < buflen )
 	{
@@ -423,11 +422,6 @@ int WriteTerminal(int term, char *buf, int buflen)
 	//buffers[term].outputBufferLength = 0;
 	CondSignal(writeLine[term]);
 	
-	if(!buffers[term].isTerminalBusy)
-	{
-		  OutputCharacter(term);
-	}
-
 	return buflen;
 }
 
@@ -453,7 +447,7 @@ int ReadTerminal(int term, char *buf, int buflen)
 	}
 
 	int numberCharacterRead = 0;
-	while ( numberCharacterRead < buflen )
+	while ( numberCharacterRead < buflen && buffers[term].inputBufferLength > 0 )
 	{
 		char c = PopCharFromInputBuffer(term);
 		*(buf + numberCharacterRead) = c;
@@ -495,7 +489,7 @@ int InitTerminal(int term)
 	buffers[term].echoBufferPopIndex = 0;
 	buffers[term].outputBufferLength = 0;
 
-	//WriteDataRegister(term, '\r');
+	WriteDataRegister(term, '\r');
 	return 0;
 }
 
