@@ -145,7 +145,7 @@ char PopCharFromInputBuffer(int term)
 			buffers[term].inputBufferPopIndex = buffers[term].inputBufferPopIndex % INPUT_BUFFER_CAPACITY;
 		}
 		
-		printf("Pop Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
+		printf("Pop Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].inputBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].inputBufferPushIndex, buffers[term].inputBufferPopIndex, buffers[term].inputBuffer);
 
 		return c;
 	}
