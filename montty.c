@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define INPUT_BUFFER_CAPACITY 4096
+#define INPUT_BUFFER_CAPACITY 4
 #define ECHO_BUFFER_CAPACITY 1024
 
 struct Buffer
@@ -113,7 +113,7 @@ int PushCharIntoInputBuffer(int term, char c)
 			CondSignal(readLine[term]);
 		}
 		
-		//printf("Push Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].inputBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].inputBufferPushIndex, buffers[term].inputBufferPopIndex, buffers[term].inputBuffer);
+		printf("Push Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].inputBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].inputBufferPushIndex, buffers[term].inputBufferPopIndex, buffers[term].inputBuffer);
 
 		return 0;
 	}
@@ -145,7 +145,7 @@ char PopCharFromInputBuffer(int term)
 			buffers[term].inputBufferPopIndex = buffers[term].inputBufferPopIndex % INPUT_BUFFER_CAPACITY;
 		}
 		
-		//printf("Pop Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
+		printf("Pop Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
 
 		return c;
 	}
@@ -324,8 +324,15 @@ void ReceiveInterrupt(int term)
 		//PushCharIntoEchoBuffer(term, '\n');
 
 		//for input buffer, convert to be '\n'
-		if( buffers[term].inputBufferLength >= INPUT_BUFFER_CAPACITY )
+		if( buffers[term].inputBufferLength == INPUT_BUFFER_CAPACITY )
 		{
+			printf("Receive Interrupt: The input buffer [term: %d] is full, but receive a carriage return.\n", term);
+			buffers[term].inputBufferCurrentLineLength = 0;
+			CondSignal(readLine[term]);
+		}
+		else if( buffers[term].inputBufferLength >= INPUT_BUFFER_CAPACITY )
+		{
+			printf("Receive Interrupt: The input buffer [term: %d, char: %c] is full.\n", term, c);
 			PushCharIntoEchoBuffer(term, '\7');
 		}
 		else
@@ -355,6 +362,7 @@ void ReceiveInterrupt(int term)
 			PushCharIntoEchoBuffer(term, '\7');
 
 			//for input buffer, empty, ignore
+			printf("Recive Interrupt: The input buffer for [term: %d] is empty.\n", term);
 		}
 	}
 	else
@@ -367,6 +375,7 @@ void ReceiveInterrupt(int term)
 		else
 		{
 			PushCharIntoEchoBuffer(term, '\7');
+			printf("Receive Interrupt: The input buffer [term: %d, char: %c] is full.\n", term, c);
 		}
 	}
 
@@ -463,7 +472,7 @@ int ReadTerminal(int term, char *buf, int buflen)
 		*(buf + numberCharacterRead) = c;
 		//printf("Read Terminal: [term: %d, count: %d, buffer: %s].\n", term, numberCharacterRead, buf);
 		
-		if( c == '\n' )
+		if( c == '\n' || buffers[term].inputBufferLength == 0)
 		{
 			break;
 		}
