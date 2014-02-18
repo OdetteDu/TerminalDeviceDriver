@@ -12,6 +12,4 @@ The third condition is the write line. If there is an active writer, then the ot
 
 The fourth condition is the read line. All the readers is waiting for this condition until the user hits an enter.
 
-The only not user friendly, but expect thing in my program is that when the input buffer is full, the user can't type '\n' and all the readers will be waiting until the user hit '\b' and then '\n'. But this is expected and rarely happen because the input buffer is large.
-
 At last, I was sick last Sunday so that Professor Johnson granted me 12 hour extension on this project. Thus, I am not turning my homework late.

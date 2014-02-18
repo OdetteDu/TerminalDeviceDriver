@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define INPUT_BUFFER_CAPACITY 4
+#define INPUT_BUFFER_CAPACITY 4096
 #define ECHO_BUFFER_CAPACITY 1024
 
 struct Buffer
@@ -42,7 +42,7 @@ static cond_id_t readLine[MAX_NUM_TERMINALS];
 
 int carriageOutputted[MAX_NUM_TERMINALS];
 
-int PushCharIntoEchoBuffer(int term, char c)
+static int PushCharIntoEchoBuffer(int term, char c)
 {
 	if( buffers[term].echoBufferLength < ECHO_BUFFER_CAPACITY )
 	{
@@ -66,7 +66,7 @@ int PushCharIntoEchoBuffer(int term, char c)
 	}
 }
 
-char PopCharFromEchoBuffer(int term)
+static char PopCharFromEchoBuffer(int term)
 {
 	if( buffers[term].echoBufferLength > 0 )
 	{
@@ -93,7 +93,7 @@ char PopCharFromEchoBuffer(int term)
 	}
 }
 
-int PushCharIntoInputBuffer(int term, char c)
+static int PushCharIntoInputBuffer(int term, char c)
 {
 	if( buffers[term].inputBufferLength < INPUT_BUFFER_CAPACITY )
 	{
@@ -102,7 +102,7 @@ int PushCharIntoInputBuffer(int term, char c)
 		buffers[term].inputBufferCurrentLineLength ++;
 		buffers[term].inputBufferPushIndex ++;
 
-		if( buffers[term].inputBufferPushIndex >= ECHO_BUFFER_CAPACITY )
+		if( buffers[term].inputBufferPushIndex >= INPUT_BUFFER_CAPACITY )
 		{
 			buffers[term].inputBufferPushIndex = buffers[term].inputBufferPushIndex % INPUT_BUFFER_CAPACITY;
 		}
@@ -124,7 +124,7 @@ int PushCharIntoInputBuffer(int term, char c)
 	}
 }
 
-char PopCharFromInputBuffer(int term)
+static char PopCharFromInputBuffer(int term)
 {
 	if( buffers[term].inputBufferLength > 0 )
 	{
@@ -151,12 +151,12 @@ char PopCharFromInputBuffer(int term)
 	}
 	else
 	{
-		printf("Pop char from Input Buffer: The echo buffer [term: %d] is empty.\n", term);
+		printf("Pop char from Input Buffer: The input buffer [term: %d] is empty.\n", term);
 		return 0;
 	}
 }
 
-int EchoCharacter(int term)
+static int EchoCharacter(int term)
 {
 	if( term >= MAX_NUM_TERMINALS || term < 0 )
 	{
@@ -235,7 +235,7 @@ int EchoCharacter(int term)
 	return 0;
 }
 
-int WriteCharacter(int term)
+static int WriteCharacter(int term)
 {
 	if( term >= MAX_NUM_TERMINALS || term < 0 )
 	{
@@ -287,7 +287,7 @@ int WriteCharacter(int term)
 	return 0;
 }
 
-int OutputCharacter(int term)
+static int OutputCharacter(int term)
 {
 	while(buffers[term].echoBufferCarriageStatus == 0 && buffers[term].echoBufferBackspaceStatus == 0 && buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0)
 	{
@@ -309,7 +309,7 @@ int OutputCharacter(int term)
 	return 0;
 }
 
-void ReceiveInterrupt(int term)
+extern void ReceiveInterrupt(int term)
 {
 	Declare_Monitor_Entry_Procedure();
 	char c = ReadDataRegister(term);
@@ -328,6 +328,7 @@ void ReceiveInterrupt(int term)
 		{
 			printf("Receive Interrupt: The input buffer [term: %d] is full, but receive a carriage return.\n", term);
 			buffers[term].inputBufferCurrentLineLength = 0;
+			buffers[term].echoBufferCarriageStatus += 2;
 			CondSignal(readLine[term]);
 		}
 		else if( buffers[term].inputBufferLength >= INPUT_BUFFER_CAPACITY )
@@ -353,7 +354,15 @@ void ReceiveInterrupt(int term)
 			//for input buffer, has char, remove the character
 			buffers[term].inputBufferLength --;
 			buffers[term].inputBufferCurrentLineLength --;
-			buffers[term].inputBufferPushIndex --;
+			if( buffers[term].inputBufferPushIndex > 0 )
+			{
+				buffers[term].inputBufferPushIndex --;
+			}
+			else
+			{
+				buffers[term].inputBufferPushIndex = INPUT_BUFFER_CAPACITY - 1;
+			}
+			printf("Backspace Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].inputBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].inputBufferPushIndex, buffers[term].inputBufferPopIndex, buffers[term].inputBuffer);
 			buffers[term].echoBufferBackspaceStatus += 3;
 		}
 		else
@@ -388,13 +397,13 @@ void ReceiveInterrupt(int term)
 	}
 }
 
-void TransmitInterrupt(int term)
+extern void TransmitInterrupt(int term)
 {
 	Declare_Monitor_Entry_Procedure();
 	OutputCharacter(term);
 }
 
-int WriteTerminal(int term, char *buf, int buflen)
+extern int WriteTerminal(int term, char *buf, int buflen)
 {
 	Declare_Monitor_Entry_Procedure();
 
@@ -444,7 +453,7 @@ int WriteTerminal(int term, char *buf, int buflen)
 	return buflen;
 }
 
-int ReadTerminal(int term, char *buf, int buflen)
+extern int ReadTerminal(int term, char *buf, int buflen)
 {
 	Declare_Monitor_Entry_Procedure();
 
@@ -489,7 +498,7 @@ int ReadTerminal(int term, char *buf, int buflen)
 	return numberCharacterRead;
 }
 
-int InitTerminal(int term)
+extern int InitTerminal(int term)
 {
 	Declare_Monitor_Entry_Procedure();
 	
@@ -517,7 +526,7 @@ int InitTerminal(int term)
 	return 0;
 }
 
-int TerminalDriverStatistics(struct termstat *stats)
+extern int TerminalDriverStatistics(struct termstat *stats)
 {
 	Declare_Monitor_Entry_Procedure();
 
