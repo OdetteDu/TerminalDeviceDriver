@@ -144,7 +144,7 @@ char PopCharFromInputBuffer(int term)
 			buffers[term].inputBufferPopIndex = buffers[term].inputBufferPopIndex % INPUT_BUFFER_CAPACITY;
 		}
 		
-		//printf("Pop Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
+		printf("Pop Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
 
 		return c;
 	}
@@ -292,12 +292,12 @@ int OutputCharacter(int term)
 
 	if (buffers[term].echoBufferStatus != 0 || buffers[term].echoBufferLength != 0)
 	{ 
-		printf("Echo Character.\n");
+		//printf("Echo Character.\n");
 		EchoCharacter(term);
 	}
 	else if(buffers[term].outputBufferLength != 0)
 	{
-		printf("Write Character.\n");
+		//printf("Write Character.\n");
 		WriteCharacter(term);
 	}
 
@@ -310,7 +310,6 @@ void ReceiveInterrupt(int term)
 	char c = ReadDataRegister(term);
 	statistics.tty_in ++;
 	//printf("Receive Interrupt: [term: %d, char: %c].\n", term, c);
-	int inputBufferStatus;
 
 	//check if c is a special character, such as space, delete, or tab
 	if( c == '\r' )
@@ -318,10 +317,17 @@ void ReceiveInterrupt(int term)
 		//for echo buffer, convert to be '\r' '\n'
 		//PushCharIntoEchoBuffer(term, '\r');
 		//PushCharIntoEchoBuffer(term, '\n');
-		buffers[term].echoBufferStatus = -2;
+		//buffers[term].echoBufferStatus = -2;
 
 		//for input buffer, convert to be '\n'
-		inputBufferStatus = PushCharIntoInputBuffer(term, '\n');
+		if( buffers[term].inputBufferLength >= INPUT_BUFFER_CAPACITY )
+		{
+			PushCharIntoEchoBuffer(term, '\7');
+		}
+		else
+		{
+			PushCharIntoInputBuffer(term, '\n');
+		}
 	}
 	else if ( c == '\b' || c == '\177' )
 	{
@@ -331,7 +337,7 @@ void ReceiveInterrupt(int term)
 			//PushCharIntoEchoBuffer(term, '\b');
 			//PushCharIntoEchoBuffer(term, ' ');
 			//PushCharIntoEchoBuffer(term, '\b');
-			buffers[term].echoBufferStatus = 3;
+			//buffers[term].echoBufferStatus = 3;
 
 			//for input buffer, has char, remove the character
 			buffers[term].inputBufferLength --;
@@ -348,18 +354,17 @@ void ReceiveInterrupt(int term)
 	}
 	else
 	{
-		//put the char in the echo buffer
-		PushCharIntoEchoBuffer(term, c);
-
-		//put the char in the input buffer
-		inputBufferStatus = PushCharIntoInputBuffer(term, c);
+		if ( buffers[term].inputBufferLength < INPUT_BUFFER_CAPACITY )
+		{
+			PushCharIntoInputBuffer(term, c);
+			PushCharIntoEchoBuffer(term, c);
+		}
+		else
+		{
+			PushCharIntoEchoBuffer(term, '\7');
+		}
 	}
 
-	if( inputBufferStatus < 0 )
-	{
-		printf("input buffer stats < 0.\n");
-		PushCharIntoEchoBuffer(term, '7');
-	}
 
 	CondSignal(hasCharacter[term]);
 
@@ -447,7 +452,7 @@ int ReadTerminal(int term, char *buf, int buflen)
 	}
 
 	int numberCharacterRead = 0;
-	while ( numberCharacterRead < buflen && buffers[term].inputBufferLength > 0 )
+	while ( numberCharacterRead < buflen )
 	{
 		char c = PopCharFromInputBuffer(term);
 		*(buf + numberCharacterRead) = c;
