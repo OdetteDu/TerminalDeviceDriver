@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define INPUT_BUFFER_CAPACITY 4
-#define ECHO_BUFFER_CAPACITY 1 
+#define INPUT_BUFFER_CAPACITY 4096
+#define ECHO_BUFFER_CAPACITY 1024
 
 struct Buffer
 {	  
@@ -18,7 +18,8 @@ struct Buffer
 	int inputBufferPopIndex;
 	int inputBufferPushIndex;
 
-	int echoBufferStatus;
+	int echoBufferCarriageStatus;
+	int echoBufferBackspaceStatus;
 	char echoBuffer[ECHO_BUFFER_CAPACITY];
 	int echoBufferLength;
 	int echoBufferPopIndex;
@@ -325,7 +326,7 @@ void ReceiveInterrupt(int term)
 		else
 		{
 			PushCharIntoInputBuffer(term, '\n');
-			buffers[term].echoBufferStatus = -2;
+			buffers[term].echoBufferCarriageStatus += 2;
 		}
 	}
 	else if ( c == '\b' || c == '\177' )
@@ -341,7 +342,7 @@ void ReceiveInterrupt(int term)
 			buffers[term].inputBufferLength --;
 			buffers[term].inputBufferCurrentLineLength --;
 			buffers[term].inputBufferPushIndex --;
-			buffers[term].echoBufferStatus = 3;
+			buffers[term].echoBufferBackspaceStatus += 3;
 		}
 		else
 		{
@@ -463,6 +464,11 @@ int ReadTerminal(int term, char *buf, int buflen)
 		}
 
 		numberCharacterRead ++;
+	}
+	
+	if ( buffers[term].inputBufferLength != buffers[term].inputBufferCurrentLineLength )
+	{
+		  CondSignal(readLine[term]);
 	}
 	
 	statistics.user_out += numberCharacterRead;
