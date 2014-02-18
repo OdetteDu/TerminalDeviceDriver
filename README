@@ -1,0 +1,17 @@
+In this lab, I completed all the requirements descirbed in the assignment. 
+
+I used a struct to store all the information regarding each terminal. It has three buffers with its length, push index and pop index. For echo buffer, it has echo status to handle the special echo such as '\b' and '\r'. For the input buffer, it has current line length to indicate where the '\n' is. It also has an int to indicate when output '\n', both '\r' and '\n' is outputted. If I have more time for this project, I will move this indicator into the struct to make the structure of the program better. But since it is a style thing, I didn't do this refactor since I am limited in time.
+
+I used exactly one monitor, and several condition to make sure that my program doesn't have race condition.
+
+The first condition I used is hasCharacter. If there is no character to be outputted, I will make the terminal wait until there is a character. I signal this condition in the receive interrupt and write terminal because that are the two only places that generates characters to be output.
+
+The seond condition I used is write character. The write terminal's active writer wait on this condition until all its character has been outputted. Everytime a character has been outputted, it will signal the active write.
+
+The third condition is the write line. If there is an active writer, then the other writer has to wait one this condition until the active writer has finished.
+
+The fourth condition is the read line. All the readers is waiting for this condition until the user hits an enter.
+
+The only not user friendly, but expect thing in my program is that when the input buffer is full, the user can't type '\n' and all the readers will be waiting until the user hit '\b' and then '\n'. But this is expected and rarely happen because the input buffer is large.
+
+

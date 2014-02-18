@@ -25,9 +25,6 @@ main(int argc, char **argv)
 
     ThreadCreate(writer1, NULL);
     ThreadCreate(writer2, NULL);
-	ThreadCreate(writer1, NULL);
-	ThreadCreate(writer1, NULL);
-	ThreadCreate(writer2, NULL);
 
     ThreadWaitAll();
 
@@ -45,6 +42,7 @@ writer1(void *arg)
 	    status, length1);
 	char *buf = malloc(10 * sizeof(char));
 	ReadTerminal(1, buf, 10);
+	printf("Read terminal writer1: %s.\n", buf);
 }
 
 void
@@ -53,7 +51,8 @@ writer2(void *arg)
     int status;
 
 	char *buf = malloc(10 * sizeof(char));
-	ReadTerminal(2, buf, 10);
+	ReadTerminal(1, buf, 10);
+	printf("Read terminal writer2: %s.\n", buf);
     status = WriteTerminal(2, string2, length2);
     if (status != length2)
 	fprintf(stderr, "Error: writer2 status = %d, length2 = %d\n",

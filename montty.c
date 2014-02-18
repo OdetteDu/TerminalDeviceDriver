@@ -135,7 +135,7 @@ char PopCharFromInputBuffer(int term)
 
 		char c = buffers[term].inputBuffer[buffers[term].inputBufferPopIndex];
 
-		printf("Pop Char: [term: %d, char: %c].\n", term, c);
+		//printf("Pop Char: [term: %d, char: %c].\n", term, c);
 
 		buffers[term].inputBufferLength --;
 		buffers[term].inputBufferPopIndex ++;
@@ -145,7 +145,7 @@ char PopCharFromInputBuffer(int term)
 			buffers[term].inputBufferPopIndex = buffers[term].inputBufferPopIndex % INPUT_BUFFER_CAPACITY;
 		}
 		
-		printf("Pop Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
+		//printf("Pop Input Buffer: [term: %d, Length: %d, CurrentLineLength: %d, PushIndex: %d, PopIndex: %d, Buffer: %s].\n", term, buffers[term].echoBufferLength, buffers[term].inputBufferCurrentLineLength, buffers[term].echoBufferPushIndex, buffers[term].echoBufferPopIndex, buffers[term].echoBuffer);
 
 		return c;
 	}
@@ -172,50 +172,54 @@ int EchoCharacter(int term)
 
 	if ( buffers[term].echoBufferCarriageStatus != 0 )
 	{
-		  int status = buffers[term].echoBufferCarriageStatus/2;
+		  int status = buffers[term].echoBufferCarriageStatus % 2;
 		  switch (status)
 		  {
-			    	case 0:
+			    case 0:
 					WriteDataRegister(term, '\r');
 					buffers[term].isTerminalBusy = 1;
 					statistics.tty_out ++;
-					buffers[term].echoBufferStatus --; 
-					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\r');
+					buffers[term].echoBufferCarriageStatus --; 
+					//printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\r');
 					break;
 				case 1:
 					WriteDataRegister(term, '\n');
 					buffers[term].isTerminalBusy = 1;
 					statistics.tty_out ++;
-					buffers[term].echoBufferStatus --; 
-					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\n');
+					buffers[term].echoBufferCarriageStatus --; 
+					//printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\n');
 					break;
 		  }
 	}
 	else if ( buffers[term].echoBufferBackspaceStatus != 0 )
 	{
-		  int status = buffers[term].echoBufferBackspaceStatus/3;
+		  int status = buffers[term].echoBufferBackspaceStatus % 3;
+		  //printf("Echo status: [backspace: %d, status: %d].\n", buffers[term].echoBufferBackspaceStatus, status);
 		  switch (status)
 		  {
 				case 1:
+					//printf("Case 1");
 					WriteDataRegister(term, '\b');
 					buffers[term].isTerminalBusy = 1;
 					statistics.tty_out ++;
-					buffers[term].echoBufferStatus --; 
-					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\b');
+					buffers[term].echoBufferBackspaceStatus --; 
+					//printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\b');
 					break;
 				case 2:
+					//printf("Case 2");
 					WriteDataRegister(term, ' ');
 					buffers[term].isTerminalBusy = 1;
 					statistics.tty_out ++;
-					buffers[term].echoBufferStatus --; 
-					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, ' ');
+					buffers[term].echoBufferBackspaceStatus --; 
+					//printf("Write Data Register from echo: [term: %d, char: %c].\n", term, ' ');
 					break;
 				case 0:
+					//printf("Case 0");
 					WriteDataRegister(term, '\b');
 					buffers[term].isTerminalBusy = 1;
 					statistics.tty_out ++;
-					buffers[term].echoBufferStatus --; 
-					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\b');
+					buffers[term].echoBufferBackspaceStatus --; 
+					//printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\b');
 					break;
 		  }
 	}
@@ -225,7 +229,7 @@ int EchoCharacter(int term)
 		WriteDataRegister(term, c);
 		buffers[term].isTerminalBusy = 1;
 		statistics.tty_out ++;
-		printf("Write Data Register from echo: [term: %d, char: %c].\n", term, c);
+		//printf("Write Data Register from echo: [term: %d, char: %c].\n", term, c);
 	}
 
 	return 0;
@@ -272,7 +276,7 @@ int WriteCharacter(int term)
 			buffers[term].isTerminalBusy = 1;
 			statistics.tty_out ++;
 			CondSignal(writeCharacter[term]);
-			printf("Write Data Register from output: [term: %d, char: %c].\n", term, c);
+			//printf("Write Data Register from output: [term: %d, char: %c].\n", term, c);
 		}
 	}
 	else
@@ -285,13 +289,13 @@ int WriteCharacter(int term)
 
 int OutputCharacter(int term)
 {
-	while(buffers[term].echoBufferStatus == 0 && buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0)
+	while(buffers[term].echoBufferCarriageStatus == 0 && buffers[term].echoBufferBackspaceStatus == 0 && buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0)
 	{
 		//printf("Wait for Characters.\n");
 		CondWait(hasCharacter[term]);
 	}
 
-	if (buffers[term].echoBufferStatus != 0 || buffers[term].echoBufferLength != 0)
+	if (buffers[term].echoBufferCarriageStatus != 0 || buffers[term].echoBufferBackspaceStatus != 0 || buffers[term].echoBufferLength != 0)
 	{ 
 		//printf("Echo Character.\n");
 		EchoCharacter(term);
@@ -457,7 +461,7 @@ int ReadTerminal(int term, char *buf, int buflen)
 	{
 		char c = PopCharFromInputBuffer(term);
 		*(buf + numberCharacterRead) = c;
-		printf("Read Terminal: [term: %d, count: %d, buffer: %s].\n", term, numberCharacterRead, buf);
+		//printf("Read Terminal: [term: %d, count: %d, buffer: %s].\n", term, numberCharacterRead, buf);
 		
 		if( c == '\n' )
 		{

@@ -20,6 +20,7 @@ int main(int argc, char **argv)
 	WriteTerminal(2, string, length);
 	char *buf = malloc(10 * sizeof(char));
 	ReadTerminal(1, buf, 10);
+	printf("Read Terminal: %s", buf);
 
 	WriteTerminal(1, string, length);
 	struct termstat *stats = malloc(sizeof(struct termstat));
