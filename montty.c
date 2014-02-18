@@ -184,8 +184,38 @@ int EchoCharacter(int term)
 					WriteDataRegister(term, '\r');
 					buffers[term].isTerminalBusy = 1;
 					statistics.tty_out ++;
+					buffers[term].echoBufferStatus ++; 
 					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\r');
 					break;
+			case -1:
+					WriteDataRegister(term, '\n');
+					buffers[term].isTerminalBusy = 1;
+					statistics.tty_out ++;
+					buffers[term].echoBufferStatus ++; 
+					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\n');
+					break;
+			case 1:
+					WriteDataRegister(term, '\b');
+					buffers[term].isTerminalBusy = 1;
+					statistics.tty_out ++;
+					buffers[term].echoBufferStatus --; 
+					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\b');
+					break;
+			case 2:
+					WriteDataRegister(term, ' ');
+					buffers[term].isTerminalBusy = 1;
+					statistics.tty_out ++;
+					buffers[term].echoBufferStatus --; 
+					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, ' ');
+					break;
+			case 3:
+					WriteDataRegister(term, '\b');
+					buffers[term].isTerminalBusy = 1;
+					statistics.tty_out ++;
+					buffers[term].echoBufferStatus --; 
+					printf("Write Data Register from echo: [term: %d, char: %c].\n", term, '\b');
+					break;
+				
 
 		  }
 	}
@@ -256,13 +286,13 @@ int WriteCharacter(int term)
 
 int OutputCharacter(int term)
 {
-	while(buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0)
+	while(buffers[term].echoBufferStatus == 0 && buffers[term].echoBufferLength == 0 && buffers[term].outputBufferLength == 0)
 	{
 		//printf("Wait for Characters.\n");
 		CondWait(hasCharacter[term]);
 	}
 
-	if (buffers[term].echoBufferLength != 0)
+	if (buffers[term].echoBufferStatus != 0 || buffers[term].echoBufferLength != 0)
 	{ 
 		//printf("Echo Character.\n");
 		EchoCharacter(term);
@@ -288,8 +318,9 @@ void ReceiveInterrupt(int term)
 	if( c == '\r' )
 	{
 		//for echo buffer, convert to be '\r' '\n'
-		PushCharIntoEchoBuffer(term, '\r');
-		PushCharIntoEchoBuffer(term, '\n');
+		//PushCharIntoEchoBuffer(term, '\r');
+		//PushCharIntoEchoBuffer(term, '\n');
+		buffers[term].echoBufferStatus = -2;
 
 		//for input buffer, convert to be '\n'
 		inputBufferStatus = PushCharIntoInputBuffer(term, '\n');
@@ -299,9 +330,10 @@ void ReceiveInterrupt(int term)
 		if ( buffers[term].inputBufferCurrentLineLength > 0 )
 		{
 			//for echo buffer, has char, convert to be '\b' ' ' '\b'
-			PushCharIntoEchoBuffer(term, '\b');
-			PushCharIntoEchoBuffer(term, ' ');
-			PushCharIntoEchoBuffer(term, '\b');
+			//PushCharIntoEchoBuffer(term, '\b');
+			//PushCharIntoEchoBuffer(term, ' ');
+			//PushCharIntoEchoBuffer(term, '\b');
+			buffers[term].echoBufferStatus = 3;
 
 			//for input buffer, has char, remove the character
 			buffers[term].inputBufferLength --;
